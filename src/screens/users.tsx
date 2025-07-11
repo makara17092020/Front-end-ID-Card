@@ -241,7 +241,7 @@ const UsersTable = () => {
       id: "actions",
       header: "Action",
       enableHiding: false,
-      cell: ({ row }) => {
+      cell: ({  }) => {
         // const user = row.original;
         return (
           <div className="flex space-x-1.5 items-center">
