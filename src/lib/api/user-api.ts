@@ -34,8 +34,27 @@ export const requestUser = () => {
     });
   };
 
+  const DELETE_USER = async (id: string) => {
+    return await request({
+      url: `/user/delete-user/${id}`,
+      method: "DELETE",
+    });
+  };
+
+  // create api delete card by admin
+  const DELETE_CARD = async (id: string) => {
+    return await request({
+      url: `/card/delete-card/${id}`,
+      method: "DELETE",
+    });
+
+    // Close the DELETE_CARD function
+  };
+
   return {
     USERS,
     UPDATE_USER,
+    DELETE_USER,
+    DELETE_CARD, // Include DELETE_CARD in the return object
   };
 };

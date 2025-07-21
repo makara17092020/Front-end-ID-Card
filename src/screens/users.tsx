@@ -43,7 +43,7 @@ dayjs.extend(timezone);
 
 const UsersTable = () => {
   const queryClient = useQueryClient();
-  const { UPDATE_USER } = requestUser();
+  const { UPDATE_USER, DELETE_USER } = requestUser();
   const { mutate: updateUserStatus, isPending: isUpdating } = useMutation({
     mutationFn: ({ id, status }: { id: string; status: boolean }) =>
       UPDATE_USER(id, status),
@@ -241,7 +241,7 @@ const UsersTable = () => {
       id: "actions",
       header: "Action",
       enableHiding: false,
-      cell: ({  }) => {
+      cell: ({}) => {
         // const user = row.original;
         return (
           <div className="flex space-x-1.5 items-center">
@@ -249,7 +249,30 @@ const UsersTable = () => {
               <Pen />
               Edit
             </Badge>
-            <Badge variant="destructive">
+            <Badge
+              variant="destructive"
+              className="cursor-pointer "
+              onClick={() => {
+                let userConfirmed = confirm("Do you want to proceed?");
+                console.log(userConfirmed);
+                if (userConfirmed) {
+                  // Code to execute if the user clicked "OK"
+                  console.log("User clicked OK.");
+
+                  // call api delete
+                  DELETE_USER("userId")
+                    .then(() => {
+                      queryClient.invalidateQueries({ queryKey: ["users"] });
+                    })
+                    .catch((error) => {
+                      console.error("Error deleting user:", error);
+                    });
+                } else {
+                  // Code to execute if the user clicked "Cancel"
+                  console.log("User clicked Cancel.");
+                }
+              }}
+            >
               <Trash /> Delete
             </Badge>
           </div>
