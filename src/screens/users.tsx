@@ -37,6 +37,7 @@ import timezone from "dayjs/plugin/timezone";
 import { Badge } from "@/components/ui/badge";
 import { useUserStatusDialog } from "@/store/user-status-dialog-store";
 import UserStatusAlertDialog from "@/components/user-status-dialong";
+import { Toaster, toast } from "sonner";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -60,17 +61,17 @@ const UsersTable = () => {
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [pagination, setPagination] = useState({
-    pageIndex: 0, //initial page index
-    pageSize: 10, //default page size
+    pageIndex: 0,
+    pageSize: 10,
   });
+
+  // State for Delete Confirmation Dialog
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [userIdToDelete, setUserIdToDelete] = useState<string | null>(null);
 
   const sortField = sorting[0]?.id ?? "created_at";
   const sortOrder =
-    sorting.length === 0
-      ? "DESC" // default sort order
-      : sorting[0]?.desc
-      ? "DESC"
-      : "ASC";
+    sorting.length === 0 ? "DESC" : sorting[0]?.desc ? "DESC" : "ASC";
   const emailFilter = columnFilters.find((f) => f.id === "email")?.value ?? "";
 
   const { data, isLoading } = useQuery({
@@ -87,10 +88,24 @@ const UsersTable = () => {
         page: pagination.pageIndex + 1,
         pageSize: pagination.pageSize,
         sortBy: sortField,
-        sortOrder: sortOrder, // Use actual sort order instead of hardcoded "DESC"
+        sortOrder,
         email: emailFilter,
       }),
-    // keepPreviousData: true, // This helps with smooth pagination transitions
+  });
+
+  // Mutation for deleting user
+  const deleteUserMutation = useMutation({
+    mutationFn: (id: string) => DELETE_USER(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast.success("Deleted Successfully!");
+      setIsDeleteDialogOpen(false);
+      setUserIdToDelete(null);
+    },
+    onError: (error) => {
+      console.error("Error deleting user:", error);
+      toast.error("Failed to delete user");
+    },
   });
 
   const columns: ColumnDef<IUser>[] = [
@@ -148,57 +163,42 @@ const UsersTable = () => {
     },
     {
       accessorKey: "full_name",
-      header: ({ column }) => {
-        return (
-          <Button
-            variant="ghost"
-            onClick={() =>
-              column.toggleSorting(column.getIsSorted() === "desc")
-            }
-          >
-            Fullname
-            <ArrowUpDown />
-          </Button>
-        );
-      },
-      cell: ({ row }) => {
-        return <div className="capitalize">{row.getValue("full_name")}</div>;
-      },
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "desc")}
+        >
+          Fullname <ArrowUpDown />
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <div className="capitalize">{row.getValue("full_name")}</div>
+      ),
     },
     {
       accessorKey: "user_name",
-      header: ({ column }) => {
-        return (
-          <Button
-            variant="ghost"
-            onClick={() =>
-              column.toggleSorting(column.getIsSorted() === "desc")
-            }
-          >
-            Username
-            <ArrowUpDown />
-          </Button>
-        );
-      },
-      cell: ({ row }) => {
-        return <div className="capitalize">{row.getValue("user_name")}</div>;
-      },
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "desc")}
+        >
+          Username <ArrowUpDown />
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <div className="capitalize">{row.getValue("user_name")}</div>
+      ),
     },
     {
       accessorKey: "email",
-      header: ({ column }) => {
-        return (
-          <Button
-            variant="ghost"
-            onClick={() =>
-              column.toggleSorting(column.getIsSorted() === "desc")
-            }
-          >
-            Email
-            <ArrowUpDown />
-          </Button>
-        );
-      },
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "desc")}
+        >
+          Email <ArrowUpDown />
+        </Button>
+      ),
       cell: ({ row }) => (
         <div className="lowercase">{row.getValue("email")}</div>
       ),
@@ -209,8 +209,6 @@ const UsersTable = () => {
       cell: ({ row }) => {
         const user = row.original;
         const isActive = user.is_active;
-        // const payload = user.is_active == true ? false : true;
-        // console.log(payload);
 
         return (
           <Badge
@@ -227,7 +225,7 @@ const UsersTable = () => {
     },
     {
       accessorKey: "created_at",
-      header: () => <>Crated At</>,
+      header: () => <>Created At</>,
       cell: ({ row }) => {
         const rawDate = row.getValue("created_at") as string;
         const fixedTime = dayjs(rawDate)
@@ -241,8 +239,7 @@ const UsersTable = () => {
       id: "actions",
       header: "Action",
       enableHiding: false,
-      cell: ({}) => {
-        // const user = row.original;
+      cell: ({ row }) => {
         return (
           <div className="flex space-x-1.5 items-center">
             <Badge>
@@ -251,50 +248,15 @@ const UsersTable = () => {
             </Badge>
             <Badge
               variant="destructive"
-              className="cursor-pointer "
+              className="cursor-pointer"
               onClick={() => {
-                let userConfirmed = confirm("Do you want to proceed?");
-                console.log(userConfirmed);
-                if (userConfirmed) {
-                  // Code to execute if the user clicked "OK"
-                  console.log("User clicked OK.");
-
-                  // call api delete
-                  DELETE_USER("userId")
-                    .then(() => {
-                      queryClient.invalidateQueries({ queryKey: ["users"] });
-                    })
-                    .catch((error) => {
-                      console.error("Error deleting user:", error);
-                    });
-                } else {
-                  // Code to execute if the user clicked "Cancel"
-                  console.log("User clicked Cancel.");
-                }
+                setUserIdToDelete(row.original.id);
+                setIsDeleteDialogOpen(true);
               }}
             >
               <Trash /> Delete
             </Badge>
           </div>
-          //   <DropdownMenu>
-          //     <DropdownMenuTrigger asChild>
-          //       <Button variant="ghost" className="h-8 w-8 p-0">
-          //         <span className="sr-only">Open menu</span>
-          //         <MoreHorizontal />
-          //       </Button>
-          //     </DropdownMenuTrigger>
-          //     <DropdownMenuContent align="end">
-          //       <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          //       <DropdownMenuItem
-          //         onClick={() => navigator.clipboard.writeText(user.id)}
-          //       >
-          //         Copy user ID
-          //       </DropdownMenuItem>
-          //       <DropdownMenuSeparator />
-          //       <DropdownMenuItem>View user details</DropdownMenuItem>
-          //       <DropdownMenuItem>Edit user</DropdownMenuItem>
-          //     </DropdownMenuContent>
-          //   </DropdownMenu>
         );
       },
     },
@@ -307,15 +269,11 @@ const UsersTable = () => {
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
-    // Remove these for server-side pagination
-    // getPaginationRowModel: getPaginationRowModel(),
-    // getSortedRowModel: getSortedRowModel(),
-    // getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
-    onPaginationChange: setPagination, // Enable pagination change handler
-    manualPagination: true, // Enable manual pagination for server-side
-    manualSorting: true, // Enable manual sorting for server-side
+    onPaginationChange: setPagination,
+    manualPagination: true,
+    manualSorting: true,
     state: {
       sorting,
       columnFilters,
@@ -325,16 +283,52 @@ const UsersTable = () => {
     },
   });
 
+  // Confirm Delete Dialog component
+  const ConfirmDeleteDialog = () => {
+    if (!userIdToDelete) return null;
+
+    return (
+      <div
+        className="fixed inset-0 flex items-center justify-center z-50"
+        onClick={() => setIsDeleteDialogOpen(false)}
+      >
+        <div
+          className="bg-black text-white p-6 rounded shadow-lg w-96"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h2 className="text-lg font-bold mb-4">Confirm Delete</h2>
+          <p className="mb-6">Are you sure you want to delete this user?</p>
+          <div className="flex justify-end space-x-4 text-black">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteUserMutation.mutate(userIdToDelete)}
+              disabled={deleteUserMutation.status === "pending"}
+            >
+              {deleteUserMutation.status === "pending"
+                ? "Deleting..."
+                : "Delete"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      {/* //alert dailong to update status */}
+      <Toaster position="top-right" />
       <UserStatusAlertDialog
         onConfirm={(userId, newStatus) => {
           updateUserStatus({ id: userId, status: newStatus });
         }}
         isLoading={isUpdating}
       />
-      ;
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
       </div>
@@ -451,9 +445,9 @@ const UsersTable = () => {
                   onChange={(e) => {
                     table.setPageSize(Number(e.target.value));
                   }}
-                  className="h-8 w-[70px] rounded border border-input bg-background px-3 py-1 text-sm"
+                  className="rounded border border-gray-300 p-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {[5, 10, 20, 30, 40, 50].map((pageSize) => (
+                  {[10, 20, 30, 40, 50].map((pageSize) => (
                     <option key={pageSize} value={pageSize}>
                       {pageSize}
                     </option>
@@ -461,20 +455,25 @@ const UsersTable = () => {
                 </select>
               </div>
 
-              {/* Simple Flow Pagination */}
               <Pagination
-                currentPage={table.getState().pagination.pageIndex + 1}
-                totalPages={table.getPageCount()}
-                onPageChange={(page) => table.setPageIndex(page - 1)}
+                currentPage={pagination.pageIndex + 1}
+                totalPages={
+                  data?.meta
+                    ? Math.ceil(data?.meta.total / data?.meta.limit)
+                    : 1
+                }
+                onPageChange={(page: number) => {
+                  return setPagination((old) => ({
+                    ...old,
+                    pageIndex: page - 1,
+                  }));
+                }}
               />
-
-              <div className="text-sm text-muted-foreground">
-                Page {data?.meta?.page || 1} of {table.getPageCount()}
-              </div>
             </div>
           </div>
         </div>
       </div>
+      {isDeleteDialogOpen && <ConfirmDeleteDialog />}
     </div>
   );
 };
