@@ -1,3 +1,5 @@
+// lib/api/cards-api.ts
+
 import type { ICardResponse } from "@/types/cards-type";
 import request from "./request";
 
@@ -23,9 +25,16 @@ export const requestCards = () => {
       method: "GET",
     });
 
-    // ✅ FIX: extract the nested cards object
-    return response.cards;
+    return response.data.cards;
   };
+
+  const DELETE_CARD = async (id: string) => {
+  return await request({
+    url: `/card/delete-card-by-admin/${id}`, // ✅ ID in the URL path
+    method: "DELETE",
+  });
+};
+
 
   const UPDATE_CARD = async (id: string, status: boolean) => {
     return await request({
@@ -39,6 +48,7 @@ export const requestCards = () => {
 
   return {
     CARDS,
+    DELETE_CARD,
     UPDATE_CARD,
   };
 };
